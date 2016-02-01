@@ -1,8 +1,6 @@
 package com.github.smarttest.core;
 
-import javassist.ClassPool;
-import javassist.CtClass;
-import javassist.CtConstructor;
+import javassist.*;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
@@ -22,11 +20,20 @@ public class WarmupClassTransformer implements ClassFileTransformer {
             try {
                 ClassPool cp = ClassPool.getDefault();
                 CtClass cc = cp.get(usedClassName);
+                CtMethod[] declaredMethods = cc.getDeclaredMethods();
+                for (CtMethod method : declaredMethods) {
+                    if (Modifier.isPublic(method.getModifiers())) {
+                        String runningTest = SmartTestContext.get().getRunningTest();
+                        if (runningTest == null || !className.equals(runningTest)) {
+                            method.insertBefore("com.github.smarttest.core.SmartTestContext.get().register(\"" + usedClassName + "\");");
+                        }
+                    }
+                }
                 CtConstructor[] constructors = cc.getConstructors();
                 for (CtConstructor constructor : constructors) {
                     String runningTest = SmartTestContext.get().getRunningTest();
                     if (runningTest == null || !className.equals(runningTest)) {
-                        constructor.insertAfter("com.github.smarttest.core.SmartTestContext.get().register(\"" + usedClassName + "\");");
+                        constructor.insertBefore("com.github.smarttest.core.SmartTestContext.get().register(\"" + usedClassName + "\");");
                     }
                 }
                 byteCode = cc.toBytecode();
