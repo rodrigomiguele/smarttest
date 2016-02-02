@@ -70,4 +70,7 @@ public class SmartTestContext {
         return new ArrayList<String>(this.smartTestRetriever.retrieveTestsByClass(targetClass));
     }
 
+    public void setSmartTestPersister(SmartTestPersister smartTestPersister) {
+        this.smartTestPersister = smartTestPersister;
+    }
 }
