@@ -21,9 +21,10 @@ import java.util.Set;
 public class WarmupClassTransformerTest {
 
     @Test
-    public void runningTests() throws Exception {
+    public void runJustCalledClass() throws Exception {
         String usedClassName = MyUsedClass.class.getName();
-        System.setProperty(SmartTestContext.SMART_TEST_CLASSPATHS, usedClassName);
+        System.setProperty(SmartTestContext.SMART_TEST_CLASSPATHS, "com.github.smarttest.core.targetClasses");
+
         Assert.assertTrue(ClassTransformationChecker.shouldTransformClass(usedClassName));
 
         MyFakeSmartestPersister myFakePersister = new MyFakeSmartestPersister();
@@ -40,13 +41,6 @@ public class WarmupClassTransformerTest {
 
         SmartTestContext.get().setRunningTest(this.getClass().getName());
 
-        Class<?> unusedClass = myFakeClassLoader.loadClass(unusedClassName);
-        Object unusedObject = unusedClass.newInstance();
-        Method pow = unusedClass.getMethod("pow");
-        pow.invoke(unusedObject);
-        SmartTestContext.get().save();
-        Assert.assertTrue(myFakePersister.getResults().isEmpty());
-
         Class<?> usedClass = myFakeClassLoader.loadClass(usedClassName);
         Object usedObject = usedClass.newInstance();
         Method increment = usedClass.getMethod("increment");
@@ -55,12 +49,13 @@ public class WarmupClassTransformerTest {
         Assert.assertEquals(1, myFakePersister.getResults().size());
         String usedtest = myFakePersister.getResults().get(usedClassName).iterator().next();
         Assert.assertEquals(this.getClass().getName(), usedtest );
-
+        Set<String> emptySet = myFakePersister.getResults().get(unusedClassName);
+        Assert.assertTrue(emptySet == null || emptySet.isEmpty());
     }
 
     private void registerClass(String className, MyFakeClassLoader myFakeClassLoader, WarmupClassTransformer warmupClassTransformer) throws IOException, IllegalClassFormatException {
-        InputStream usedClassContentStream = this.getClass().getClassLoader().getResourceAsStream(className+".class");
-        byte[] classByteContent = IOUtils.readFully(usedClassContentStream, 0, false);
+        InputStream usedClassContentStream = this.getClass().getClassLoader().getResourceAsStream(className.replace(".", "/") + ".class");
+        byte[] classByteContent = IOUtils.readFully(usedClassContentStream, 0, true);
         byte[] transformedClass = warmupClassTransformer.transform(this.getClass().getClassLoader(), className, null, null, classByteContent);
         myFakeClassLoader.defineClass(className, transformedClass);
     }
